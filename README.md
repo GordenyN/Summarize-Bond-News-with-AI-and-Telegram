@@ -29,7 +29,8 @@ Telegram screenshots of the summary delivery:
 <img width="1105" height="1182" alt="image" src="https://github.com/user-attachments/assets/c485ce10-4454-426b-ab22-e7fad2d552b3" />
 
 
-<img width="783" height="599" alt="image" src="https://github.com/user-attachments/assets/b5c34025-2f9e-49db-8915-eb5e11eb964a" />
+<img width="1225" height="636" alt="image" src="https://github.com/user-attachments/assets/c07a750e-b18a-4d45-b483-751eb5a34be2" />
+
 
 
 
