@@ -1,0 +1,456 @@
+{
+  "name": "Summarize Bond News with AI and Telegram",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -352,
+        1488
+      ],
+      "id": "3dc92895-e367-4a7e-a381-7f815890148c",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "amount": 90
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        96,
+        1488
+      ],
+      "id": "8f21202c-74ad-42c3-ab9a-0dc854f37514",
+      "name": "Wait 90 seconds",
+      "webhookId": "e4866198-b806-4746-b57f-97333c497dbf"
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        768,
+        1584
+      ],
+      "id": "f6444a2d-dd75-45c1-a0f9-ab64178464d5",
+      "name": "Wait 30 seconds",
+      "webhookId": "6cc8c637-bafb-4d64-9cd4-8ae2a9f5b7ca"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Входные данные приходят через items\nconst input = items[0].json; // берем первый (и единственный) элемент\n\n// получаем массив новостей\nconst newsArray = input.data?.news || [];\n\n// создаем выходные элементы\nreturn newsArray.map(item => ({\n  json: {\n    date: item.date,\n    title: item.title,\n    content: item.content,\n  }\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        1360
+      ],
+      "id": "9d3fd857-6881-456a-baac-b3a2b73d0766",
+      "name": "Parse News JSON"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f40430c4-3c14-42e9-920f-7c1120834aab",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "6f5b8961-b904-433a-956d-ab6e2300e914",
+              "name": "content",
+              "value": "={{ $json.content }}",
+              "type": "string"
+            },
+            {
+              "id": "b198a180-64df-4cd6-8636-b766205bf792",
+              "name": "date",
+              "value": "={{ $json.date }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        992,
+        1360
+      ],
+      "id": "5783350c-4c69-404e-b33b-2ae7537dab23",
+      "name": "Format News Fields"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.firecrawl.dev/v1/extract/{{ $('Extract News (Firecrawl API)').item.json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer fc-87a93456e0064a96acbb7a1ee5a79b67"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        1488
+      ],
+      "id": "cb51ac1e-e889-4ae5-83a1-04cc9d46135d",
+      "name": "Fetch Extraction Results",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ff812e47-d747-4f1a-8fa8-9f3d40ec2acd",
+              "leftValue": "={{ $json.data }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        544,
+        1392
+      ],
+      "id": "a9fe0011-0a45-4caa-bf5b-9aadbd372ae0",
+      "name": "Check Data Availability",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v1/extract",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer fc-87a93456e0064a96acbb7a1ee5a79b67"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"urls\": [\n    \"https://bonds.finam.ru/news/today/*\"\n  ],\n  \n  \"prompt\": \"Extract the title, publication date, and full text of each news article from the website bonds.finam.ru/news/today/.\",\n  \"schema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"news\": {\n        \"type\": \"array\",\n        \"items\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"title\": {\n              \"type\": \"string\",\n              \"description\": \"News headline\"\n            },\n            \"date\": {\n              \"type\": \"string\",\n              \"description\": \"Publication date of the news article\"\n            },\n            \"content\": {\n              \"type\": \"string\",\n              \"description\": \"Full text of the news article\"\n            }\n          },\n          \"required\": [\n            \"title\",\n            \"date\",\n            \"content\"\n          ]\n        }\n      }\n    },\n    \"required\": [\n      \"news\"\n    ]\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -128,
+        1488
+      ],
+      "id": "5cd019e2-73d3-41d8-b831-6496c37f4057",
+      "name": "Extract News (Firecrawl API)",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Проанализируй следующие новости об облигациях и создай сводку по каждому эмитенту:\n\nЗаголовки: {{ $json.title }}\nДаты: {{ $json.date }}\nТексты новостей: {{ $json.content }}",
+        "options": {
+          "systemMessage": "Ты - аналитик облигационного рынка. Твоя задача - проанализировать новости и создать сводку по каждому эмитенту.\n\nИз каждой новости извлеки:\n1. Название эмитента (компания, которая размещает облигации)\n2. Объем размещения (в млн или млрд рублей)\n3. Ставку купона (в процентах)\n4. Дату события\n\nСгруппируй новости по эмитентам и выдай сводку в формате:\n\nЭмитент: [название]\n- Размещение: [объем в млрд/млн руб]\n- Купоны: [ставка в %]\n- Дата: [дата в формате ДД.ММ.ГГГГ]\n\nЕсли у одного эмитента несколько размещений, перечисли все. Если информация отсутствует, укажи \"данные отсутствуют\"."
+        }
+      },
+      "id": "e1a9cd34-875b-45e8-a19f-47940511e31c",
+      "name": "Issuer Summary Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1440,
+        1360
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        1584
+      ],
+      "id": "1248eb82-8ae7-4e52-976d-7cb4e01e95d4",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "giNN3kqfviFygivP",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "title"
+            },
+            {
+              "fieldToAggregate": "content"
+            },
+            {
+              "fieldToAggregate": "date"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "987dfc46-91a9-4f36-a930-c34d548e483c",
+      "name": "Combine All News",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        1360
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "1157814299",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "id": "dbe7a5bf-df2d-4d27-afc7-00db21ccf2f2",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1792,
+        1360
+      ],
+      "webhookId": "92fec4df-0995-44cf-bf04-bf5f5d10f981",
+      "credentials": {
+        "telegramApi": {
+          "id": "19ggphRmXCvtEMbA",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# Firecrawl Extract\nСобирает новости с bonds.finam.ru через Firecrawl API.\nОбрабатывает JSON и форматирует данные для аналитики.\n",
+        "height": 724,
+        "width": 1120,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        1152
+      ],
+      "id": "b6e66b99-782b-4af8-8327-ec065d6d53ee",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Summarize Bond News with AI and Telegram\n### How it works\n1.  Manually trigger the workflow to start the news extraction.\n2.  The workflow uses Firecrawl API to extract titles, dates, and full content from bond news articles on `bonds.finam.ru`.\n3.  After waiting for extraction, it validates the data and retries if necessary, then parses and formats the news.\n4.  All extracted news is combined, and an AI agent (Google Gemini) analyzes it to identify bond issuers, placement volumes, coupon rates, and event dates.\n5.  A structured summary is generated for each issuer, detailing their bond activity.\n6.  The complete AI-generated summary is sent to a designated Telegram chat.\n### Setup\n- [ ] Connect your Telegram account.\n- [ ] Connect your Google Gemini (or PaLM) account.\n- [ ] Add your Firecrawl API key.\n- [ ] Set the target Telegram chat ID in the 'Send to Telegram' node.\n- [ ] (Optional) Modify the Firecrawl API URL or AI prompt to target different news sources or adjust summarization.",
+        "height": 544,
+        "width": 768
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1376,
+        1184
+      ],
+      "id": "6a36fe15-63f2-4b79-a9e1-82677019aee7",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## News processing and analysis\n- Форматируем поля новостей (title, content, date)\n- Объединяем все новости в один массив\n- Анализируем новости по эмитентам через Issuer Summary Agent\n- Отправляем готовую сводку в Telegram\n",
+        "height": 720,
+        "width": 992,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        976,
+        1152
+      ],
+      "id": "1acd4b67-a3be-4496-8e17-11befcac7595",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Extract News (Firecrawl API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 90 seconds": {
+      "main": [
+        [
+          {
+            "node": "Fetch Extraction Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 30 seconds": {
+      "main": [
+        [
+          {
+            "node": "Fetch Extraction Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse News JSON": {
+      "main": [
+        [
+          {
+            "node": "Format News Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Extraction Results": {
+      "main": [
+        [
+          {
+            "node": "Check Data Availability",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Data Availability": {
+      "main": [
+        [
+          {
+            "node": "Wait 30 seconds",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse News JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract News (Firecrawl API)": {
+      "main": [
+        [
+          {
+            "node": "Wait 90 seconds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format News Fields": {
+      "main": [
+        [
+          {
+            "node": "Combine All News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Issuer Summary Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine All News": {
+      "main": [
+        [
+          {
+            "node": "Issuer Summary Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Issuer Summary Agent": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5dff03ba-75d0-44e1-9bc5-6b610dce3933",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "34819927705bed8eff4ca1f1727ff30bc3d0e1b7ee3d9851d2803fb8d89c4f26"
+  },
+  "id": "f1tTnivcMOi4ciKA",
+  "tags": []
+}
