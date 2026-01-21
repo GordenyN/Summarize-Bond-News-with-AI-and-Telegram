@@ -96,7 +96,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer fc-87a93456e0064a96acbb7a1ee5a79b67"
+              "value": "Bearer "
             }
           ]
         },
@@ -158,7 +158,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer fc-87a93456e0064a96acbb7a1ee5a79b67"
+              "value": "Bearer "
             }
           ]
         },
